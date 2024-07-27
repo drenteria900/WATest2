@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wild Apricot Contacts</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icons/icon-192x192.png">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+            .then(() => console.log('Service Worker Registered'))
+            .catch(error => console.log('Service Worker Registration Failed:', error));
+        }
+    </script>
+</head>
+<body>
+    <h1>Wild Apricot Contacts</h1>
+    <div id="contacts"></div>
+    <button id="load-more">Load More Contacts</button>
+
+    <script>
+        let offset = 0;
+        const limit = 10;
+        const statuses = [
+            { id: 2357511, label: 'Prospect' },
+            { id: 2357512, label: 'Current' },
+            { id: 2357513, label: 'Completed' },
+            { id: 2357514, label: 'Proposal Sent' },
+            { id: 2357515, label: 'Denied' },
+            { id: 2357516, label: 'Called - Needs Follow up' },
+            { id: 2357517, label: 'No Answer' },
+            { id: 2357518, label: 'Conversation in Progress' },
+            { id: 2357519, label: 'No answer 2 - Left Voicemail' }
+        ]; // Example statuses with IDs
+
+        async function fetchContacts() {
+            try {
+                const response = await fetch(`/api/contacts?limit=${limit}&offset=${offset}`);
+                const data = await response.json();
+                const contactsDiv = document.getElementById('contacts');
+
+                if (data && Array.isArray(data) && data.length > 0) {
+                    data.forEach(contact => {
+                        const div = document.createElement('div');
+                        div.innerHTML = `
+                            <p><strong>ID:</strong> ${contact.Id}</p>
+                            <p><strong>First Name:</strong> ${contact.FirstName}</p>
+                            <p><strong>Last Name:</strong> ${contact.LastName}</p>
+                            <p><strong>Status:</strong> ${contact.Status}</p>
+                            <p><strong>Veteran:</strong> ${contact.Veteran}</p>
+                            <p><strong>Email:</strong> ${contact.Email}</p>
+                            <p><strong>Phone:</strong> ${contact.Phone}</p>
+                            <form id="status-form-${contact.Id}">
+                                <label><strong>Change Status:</strong></label>
+                                ${statuses.map(status => `
+                                    <input type="radio" name="status" value="${status.id}" ${contact.StatusId === status.id ? 'checked' : ''}> ${status.label}
+                                `).join('')}
+                                <button type="submit">Update Status</button>
+                            </form>
+                        `;
+                        div.style.border = '1px solid #000';
+                        div.style.padding = '10px';
+                        div.style.margin = '10px 0';
+                        contactsDiv.appendChild(div);
+
+                        document.getElementById(`status-form-${contact.Id}`).addEventListener('submit', async (e) => {
+                            e.preventDefault();
+                            const newStatusId = document.querySelector(`#status-form-${contact.Id} input[name="status"]:checked`).value;
+                            await updateStatus(contact.Id, newStatusId);
+                        });
+                    });
+                    offset += limit;
+                } else {
+                    document.getElementById('load-more').disabled = true;
+                    document.getElementById('load-more').textContent = 'No More Contacts';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('contacts').textContent = 'Error fetching contacts.';
+            }
+        }
+
+        async function updateStatus(contactId, newStatusId) {
+            try {
+                const response = await fetch(`/api/contacts/${contactId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ statusId: newStatusId })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Status updated successfully');
+                } else {
+                    alert(`Failed to update status: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('Error updating status');
+            }
+        }
+
+        document.getElementById('load-more').addEventListener('click', fetchContacts);
+
+        // Initial fetch
+        fetchContacts();
+    </script>
+</body>
+</html>

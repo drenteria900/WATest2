@@ -1,0 +1,12 @@
+# .editorconfig
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[*.md]
+end_of_line = lf
+
+[*.json]
+end_of_line = lf

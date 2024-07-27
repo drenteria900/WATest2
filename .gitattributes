@@ -1,0 +1,11 @@
+# Ensure consistent line endings
+* text=auto
+
+# Handle specific file types
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+
+# Exclude node_modules
+node_modules/* binary

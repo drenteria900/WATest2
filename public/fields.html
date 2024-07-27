@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Contact Fields</title>
+</head>
+<body>
+    <h1>Available Contact Fields</h1>
+    <div id="fields"></div>
+
+    <script>
+        async function fetchFields() {
+            try {
+                const response = await fetch('/api/fields');
+                const fields = await response.json();
+                const fieldsDiv = document.getElementById('fields');
+
+                if (fields && Array.isArray(fields) && fields.length > 0) {
+                    fields.forEach(field => {
+                        const p = document.createElement('p');
+                        p.textContent = field;
+                        fieldsDiv.appendChild(p);
+                    });
+                } else {
+                    fieldsDiv.textContent = 'No fields found.';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('fields').textContent = 'Error fetching fields.';
+            }
+        }
+
+        // Fetch and display fields on page load
+        fetchFields();
+    </script>
+</body>
+</html>
