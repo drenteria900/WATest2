@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-In</title>
+    <style>
+        .check-in-entry {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            position: relative;
+        }
+        .dates {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .date-entry {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .delete-button, .delete-entry-button {
+            cursor: pointer;
+            color: red;
+            margin-left: 10px;
+        }
+        .notes {
+            margin-top: 5px;
+        }
+        .delete-entry-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+        }
+        .date-input {
+            border: none;
+            background: transparent;
+            font-size: 1em;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Contact Check-In</h1>
+    <div id="check-in-container"></div>
+    <button id="add-entry">Add</button>
+
+    <!-- Firebase SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDJyK4r8xQydwwQFdQwgUmxeCges3CBKGs",
+            authDomain: "checkin-db.firebaseapp.com",
+            databaseURL: "https://checkin-db-default-rtdb.firebaseio.com",
+            projectId: "checkin-db",
+            storageBucket: "checkin-db.appspot.com",
+            messagingSenderId: "984710281681",
+            appId: "1:984710281681:web:c411be87c9df2ac97d88f0",
+            measurementId: "G-2V782RPD88"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Event listener for adding new entry
+        document.getElementById('add-entry').addEventListener('click', () => {
+            addCheckInEntry();
+            saveEntriesToFirebase();
+        });
+
+        // Save entries to Firebase
+        function saveEntriesToFirebase() {
+            const entries = [];
+            document.querySelectorAll('.check-in-entry').forEach(entry => {
+                const name = entry.querySelector('input[type="text"]').value;
+                const email = entry.querySelector('input[type="email"]').value;
+                const dates = Array.from(entry.querySelectorAll('.date-entry')).map(dateEntry => ({
+                    date: dateEntry.querySelector('.date-input') ? dateEntry.querySelector('.date-input').value : dateEntry.querySelector('span').textContent,
+                    notes: dateEntry.querySelector('.notes') ? dateEntry.querySelector('.notes').value : null,
+                    isEstimate: dateEntry.querySelector('.date-input') ? true : false
+                }));
+                entries.push({ name, email, dates });
+            });
+            database.ref('checkins').set(entries);
+        }
+
+        // Load entries from Firebase
+        function loadEntriesFromFirebase() {
+            database.ref('checkins').get().then((snapshot) => {
+                if (snapshot.exists()) {
+                    const entries = snapshot.val();
+                    entries.forEach(entry => {
+                        addCheckInEntry(entry);
+                    });
+                }
+            }).catch((error) => {
+                console.error(error);
+            });
+        }
+
+        // Function to add a new check-in entry
+        function addCheckInEntry(entryData = {}) {
+            const checkInContainer = document.getElementById('check-in-container');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'check-in-entry';
+
+            newEntry.innerHTML = `
+                <input type="text" placeholder="Full Name" value="${entryData.name || ''}">
+                <input type="email" placeholder="Email" value="${entryData.email || ''}">
+                <button class="contacted-button">Contacted</button>
+                <button class="estimate-button">Estimate Sent</button>
+                <div class="dates"></div>
+                <button class="delete-entry-button">Delete Entry</button>
+            `;
+
+            checkInContainer.appendChild(newEntry);
+
+            const datesContainer = newEntry.querySelector('.dates');
+            if (entryData.dates) {
+                entryData.dates.forEach(dateData => {
+                    const dateEntry = document.createElement('div');
+                    dateEntry.className = 'date-entry';
+
+                    if (dateData.isEstimate) {
+                        dateEntry.innerHTML = `
+                            <span>Estimate sent on </span>
+                            <input type="text" value="${dateData.date}" class="date-input">
+                            <span class="delete-button">&times;</span>
+                        `;
+                    } else {
+                        dateEntry.innerHTML = `
+                            <span>${dateData.date}</span>
+                            <input type="text" placeholder="Notes" class="notes" value="${dateData.notes || ''}">
+                            <span class="delete-button">&times;</span>
+                        `;
+                    }
+                    datesContainer.appendChild(dateEntry);
+
+                    dateEntry.querySelector('.delete-button').addEventListener('click', () => {
+                        datesContainer.removeChild(dateEntry);
+                        saveEntriesToFirebase();
+                    });
+                });
+            }
+
+            newEntry.querySelector('.contacted-button').addEventListener('click', event => {
+                addDate(event);
+                saveEntriesToFirebase();
+            });
+
+            newEntry.querySelector('.estimate-button').addEventListener('click', event => {
+                addEstimateDate(event);
+                saveEntriesToFirebase();
+            });
+
+            newEntry.querySelector('.delete-entry-button').addEventListener('click', () => {
+                checkInContainer.removeChild(newEntry);
+                saveEntriesToFirebase();
+            });
+
+            saveEntriesToFirebase();
+        }
+
+        // Function to add a date entry
+        function addDate(event) {
+            const datesContainer = event.target.nextElementSibling.nextElementSibling;
+            const date = new Date().toLocaleDateString('en-GB'); // dd/mm/yyyy format
+            const dateEntry = document.createElement('div');
+            dateEntry.className = 'date-entry';
+
+            dateEntry.innerHTML = `
+                <span>${date}</span>
+                <input type="text" placeholder="Notes" class="notes">
+                <span class="delete-button">&times;</span>
+            `;
+            datesContainer.appendChild(dateEntry);
+
+            dateEntry.querySelector('.delete-button').addEventListener('click', () => {
+                datesContainer.removeChild(dateEntry);
+                saveEntriesToFirebase();
+            });
+
+            saveEntriesToFirebase();
+        }
+
+        // Function to add an estimate date entry
+        function addEstimateDate(event) {
+            const datesContainer = event.target.nextElementSibling;
+            const date = new Date().toLocaleDateString('en-GB'); // dd/mm/yyyy format
+            const dateEntry = document.createElement('div');
+            dateEntry.className = 'date-entry';
+
+            dateEntry.innerHTML = `
+                <span>Estimate sent on </span>
+                <input type="text" value="${date}" class="date-input">
+                <span class="delete-button">&times;</span>
+            `;
+            datesContainer.appendChild(dateEntry);
+
+            dateEntry.querySelector('.delete-button').addEventListener('click', () => {
+                datesContainer.removeChild(dateEntry);
+                saveEntriesToFirebase();
+            });
+
+            saveEntriesToFirebase();
+        }
+
+        // Load existing entries on page load
+        window.onload = loadEntriesFromFirebase;
+    </script>
+</body>
+</html>
